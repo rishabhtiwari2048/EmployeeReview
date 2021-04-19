@@ -1,0 +1,202 @@
+create external table review_data(
+review_no int,
+company string,
+location string,
+posting_date string,
+job_title string,
+summary string,
+pros string,
+cons string,
+overall_rating int,
+work_balance_rating int,
+culture_value_rating int,
+career_opportunities_rating int,
+comp_benefit_rating int,
+senior_management_rating int)
+row format delimited
+fields terminated by ','
+stored as textfile
+tblproperties("skip.header.line.count"="1");
+
+load data inpath '/user/rishabhtiwari2048gmail/employee_review/data.csv' into table review_data;
+
+create external table employee_review2(
+review_no int,
+company string,
+location string,
+posting_date string,
+job_title string,
+summary string,
+pros string,
+cons string,
+overall_rating int,
+work_balance_rating int,
+culture_value_rating int,
+career_opportunities_rating int,
+comp_benefit_rating int,
+senior_management_rating int)
+row format delimited
+stored as textfile;
+
+insert overwrite table employee_review2 select distinct * from review_data;
+
+
+insert into employee_review2
+select distinct a.* from review_data a where not exists(select b.* from employee_review2 b where b.review_no = a.review_no)
+
+select count(*) from employee_review2;
+
+drop table employee_review_formatted;
+
+create external table employee_review_formatted(
+company string,
+country string,
+posting_date string,
+employee_status string,
+job_title string,
+summary string,
+pros string,
+cons string,
+overall_rating int,
+work_balance_rating int,
+culture_value_rating int,
+career_opportunities_rating int,
+comp_benefit_rating int,
+senior_management_rating int)
+row format delimited 
+fields terminated by ','
+lines terminated by '\n'
+stored as textfile
+location '/user/rishabhtiwari2048gmail/employee_review/final_data';
+
+insert overwrite table employee_review_formatted 
+select company, 
+       country(location),
+       dateextract(posting_date),
+       employeestatus(job_title,1),
+       employeestatus(job_title,2),
+       summary,
+       pros,
+       cons,
+       overall_rating, 
+       work_balance_rating,
+       culture_value_rating, 
+       career_opportunities_rating,
+       comp_benefit_rating, 
+       senior_management_rating 
+from employee_review2;
+
+select job_title, employee_status from employee_review_formatted limit 5;
+
+drop table employee_review;
+
+create external table employee_review(
+company string,
+country string,
+year int,
+month int,
+employee_status string,
+job_title string,
+summary string,
+pros string,
+cons string,
+overall_rating int,
+work_balance_rating int,
+culture_value_rating int,
+career_opportunities_rating int,
+comp_benefit_rating int,
+senior_management_rating int)
+row format delimited 
+fields terminated by ','
+lines terminated by '\n'
+stored as textfile
+location '/user/rishabhtiwari2048gmail/employee_review/final_data';
+
+select 
+percentile(cast(overall_rating as bigint), 0.5), --4
+percentile(cast(work_balance_rating as bigint), 0.5), --3
+percentile(cast(culture_value_rating as bigint), 0.5), --4
+percentile(cast(career_opportunities_rating as bigint), 0.5), --4
+percentile(cast(comp_benefit_rating as bigint), 0.5), --4
+percentile(cast(senior_management_rating as bigint), 0.5) --3
+from employee_review_formatted;
+
+insert overwrite table employee_review
+select 
+    company, 
+    country, 
+    date_format(posting_date,'yyyy') as year,
+    date_format(posting_date,'MM') as month,
+    employee_status,
+    job_title,
+    summary,
+    pros,
+    cons,
+    nvl(overall_rating,4) as overall_rating,
+    nvl(work_balance_rating,3) as work_balance_rating,
+    nvl(culture_value_rating,4) as culture_value_rating,
+    nvl(career_opportunities_rating,4) as career_opportunities_rating,
+    nvl(comp_benefit_rating,4) as comp_benefit_rating,
+    nvl(senior_management_rating,3) as senior_management_rating
+from employee_review_formatted;
+
+select * from employee_review limit 10;
+
+select company, 
+       percentile(cast(overall_rating as bigint),0.25) as trend25,
+       percentile(cast(overall_rating as bigint),0.50) as trend50,
+       percentile(cast(overall_rating as bigint),0.75) as trend75
+from employee_review
+group by company;
+
+select company,
+       year,
+       percentile(cast(overall_rating as bigint),0.25) as trend25,
+       percentile(cast(overall_rating as bigint),0.50) as trend50,
+       percentile(cast(overall_rating as bigint),0.75) as trend75
+from employee_review
+where year is not null and year > 2000
+group by company,year
+order by company,year;
+
+select company,
+       country,
+       percentile(cast(overall_rating as bigint),0.25) as trend25,
+       percentile(cast(overall_rating as bigint),0.50) as trend50,
+       percentile(cast(overall_rating as bigint),0.75) as trend75
+from employee_review
+where lower(country) != 'None'
+group by company,country;
+
+select company,
+       year,
+       employee_status,
+       percentile(cast(overall_rating as bigint),0.25) as trend25,
+       percentile(cast(overall_rating as bigint),0.50) as trend50,
+       percentile(cast(overall_rating as bigint),0.75) as trend75
+from employee_review
+where year is not null and year > 2000
+group by company, year, employee_status
+order by company, year, employee_status;
+
+select company,
+       year,
+       job_title,
+       percentile(cast(overall_rating as bigint),0.25) as trend25,
+       percentile(cast(overall_rating as bigint),0.50) as trend50,
+       percentile(cast(overall_rating as bigint),0.75) as trend75
+from employee_review
+where year is not null and year > 2000
+group by company, year, job_title
+order by company, year, job_title;
+
+select company,
+    corr(overall_rating, overall_rating) as VSoverall_rating,
+    corr(overall_rating, work_balance_rating) as VSwork_balance_rating,
+    corr(overall_rating, culture_value_rating) as VSculture_value_rating,
+    corr(overall_rating, career_opportunities_rating) as VScareer_opportunities_rating,
+    corr(overall_rating, comp_benefit_rating) as VScomp_benefit_rating,
+    corr(overall_rating, senior_management_rating) as VSsenior_management_rating
+from employee_review
+group by company;
+

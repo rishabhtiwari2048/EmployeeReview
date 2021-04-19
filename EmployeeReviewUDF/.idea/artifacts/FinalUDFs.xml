@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="FinalUDFs">
+    <output-path>$PROJECT_DIR$/out/artifacts/FinalUDFs</output-path>
+    <root id="archive" name="EmployeeReviewUDF.jar">
+      <element id="module-output" name="EmployeeReviewUDF" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../Big Data Hadoop and Spark/Amit Sharma/BDH Developer/BDH Learning Material/Hadoop Demo/Hive/hive-exec-0.8.1.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
